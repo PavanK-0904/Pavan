@@ -1,7 +1,4 @@
-"""
-Minical PMS Service Layer - MySQL Database Integration
-Replaces QLOApps API with direct SQL queries to nexrovatestdb
-"""
+
 import pymysql
 from datetime import datetime
 from config import (
@@ -74,7 +71,7 @@ def get_room_types():
     Returns list of room types with id, name, and base price information.
     """
     try:
-        # Query room types that can be sold online and aren't deleted
+        
         query = """
             SELECT 
                 rt.id,
@@ -102,12 +99,11 @@ def get_room_types():
         
         room_types = []
         for row in results:
-            # For base price, we'll use a default or fetch from rate_plan
-            # Since rate and rate_plan tables are empty, using a default
+           
             room_type = {
                 "id": row["id"],
                 "name": row["name"],
-                "base_price": 100.00,  # Default price, can be customized
+                "base_price": 100.00,  
                 "max_occupancy": row["max_occupancy"] or 2,
                 "max_adults": row["max_adults"] or 2,
                 "max_children": row["max_children"] or 0,
@@ -130,7 +126,7 @@ def internal_create_customer(firstname, lastname, email, phone):
     Returns customer_id on success, None on failure.
     """
     try:
-        # Check if customer already exists by email
+        
         check_query = "SELECT customer_id FROM customer WHERE email = %s LIMIT 1"
         existing = execute_query(check_query, (email,))
         
@@ -139,7 +135,7 @@ def internal_create_customer(firstname, lastname, email, phone):
             print(f"[CUSTOMER] Found existing customer: {customer_id}")
             return customer_id
         
-        # Insert new customer (Minical uses customer_name instead of first/last)
+    
         full_name = f"{firstname} {lastname}".strip()
         insert_query = """
             INSERT INTO customer (
@@ -174,7 +170,7 @@ def create_booking(customer_id, room_type_id, check_in, check_out):
     Returns booking_id on success, None on failure.
     """
     try:
-        # Get an available room of the specified type
+        
         room_query = """
             SELECT room_id FROM room 
             WHERE room_type_id = %s 
@@ -191,8 +187,7 @@ def create_booking(customer_id, room_type_id, check_in, check_out):
         
         room_id = available_rooms[0]["room_id"]
         
-        # Note: Minical booking table structure is different - just creating basic booking
-        # May need to also create booking_x_room_date entries
+       
         insert_query = """
             INSERT INTO booking (
                 booking_customer_id,
@@ -208,7 +203,7 @@ def create_booking(customer_id, room_type_id, check_in, check_out):
         
         if booking_id:
             print(f"[BOOKING] Created booking: {booking_id}")
-            # TODO: Insert into booking_x_room_date for actual dates/rooms
+            
             return booking_id
         else:
             print("[BOOKING] Failed to create booking")
@@ -225,7 +220,7 @@ def pms_check_availability_pricing(check_in, check_out, guests):
     Returns list of available rooms with pricing.
     """
     try:
-        # Validate dates
+        
         dt_in = datetime.strptime(check_in, "%Y-%m-%d")
         dt_out = datetime.strptime(check_out, "%Y-%m-%d")
         nights = (dt_out - dt_in).days
@@ -234,7 +229,7 @@ def pms_check_availability_pricing(check_in, check_out, guests):
             print("[AVAILABILITY] Invalid date range")
             return []
         
-        # Get all room types
+        
         room_types = get_room_types()
         
         if not room_types:
@@ -244,28 +239,26 @@ def pms_check_availability_pricing(check_in, check_out, guests):
         available = []
         
         for room in room_types:
-            # Check if room type can accommodate the guests
+
             if guests > room["max_occupancy"]:
                 continue
             
-            # TODO: Add proper availability check against existing bookings
-            # For now, we'll assume all room types are available
+           
             
-            # Calculate pricing
+        
             base_price = room["base_price"]
             total_price = base_price * nights
             
-            # Apply pricing rules
+           
             if guests > room["max_adults"]:
-                # Extra person charge
+                
                 extra_guests = guests - room["max_adults"]
-                total_price += (extra_guests * 20 * nights)  # $20 per extra person per night
+                total_price += (extra_guests * 20 * nights)  
             
-            # Apply discounts for longer stays
             if nights >= 7:
-                total_price *= 0.85  # 15% discount for week+ stays
+                total_price *= 0.85  
             elif nights >= 5:
-                total_price *= 0.90  # 10% discount for 5+ nights
+                total_price *= 0.90  
             
             available.append({
                 "id": room["id"],
@@ -296,3 +289,4 @@ def create_housekeeping_ticket(guest_name, room, text, priority="normal"):
     }
     print("[HOUSEKEEPING TICKET CREATED]", ticket)
     return ticket
+
