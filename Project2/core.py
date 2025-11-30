@@ -31,13 +31,12 @@ def call_perplexity(prompt, system="You are Nexrova AI assistant.", history=None
 
         messages = [{"role": "system", "content": system}]
         
-        # Add conversation history if provided
+        
         if history:
-            # Limit history to last 10 messages
+            
             hist_to_add = history[-10:]
             
-            # Check if the last message in history is the same as the current prompt
-            # If so, exclude it to avoid duplication, as we append prompt below
+            
             if hist_to_add and hist_to_add[-1].get("role") == "user" and hist_to_add[-1].get("content") == prompt:
                 hist_to_add = hist_to_add[:-1]
                 
@@ -82,8 +81,7 @@ def detect_intent(msg, session=None):
     """
     msg_lower = msg.lower()
     
-    # Intent pattern definitions with comprehensive regex patterns
-    # Order matters: more specific intents should be checked first
+    
     intent_patterns = {
         "housekeeping": [
             r"\b(need|want|request|require|get|bring|send).*\b(towel|towels|tissue|toiletries)",
@@ -96,7 +94,7 @@ def detect_intent(msg, session=None):
             r"\b(garbage|trash|waste)\b",
         ],
         
-        # Check cancel/modify BEFORE start_booking to avoid conflicts
+        
         "cancel_booking": [
             r"\b(cancel|cancellation)\b",
             r"\brefund\b",
@@ -111,17 +109,17 @@ def detect_intent(msg, session=None):
         ],
         
         "start_booking": [
-            r"\b(book|reserve)\b(?!.*\b(cancel|change|modify|upgrade))",  # Negative lookahead
+            r"\b(book|reserve)\b(?!.*\b(cancel|change|modify|upgrade))",  
             r"\bmake.*reservation\b",
             r"\b(want|need|would like).*\b(book|reserve|stay)\b",
-            r"\b(i want to|can i|please)\s+check[\s-]?in\b", # More specific check-in action
-            r"\b(register|registration)\b", # Added registration
+            r"\b(i want to|can i|please)\s+check[\s-]?in\b", 
+            r"\b(register|registration)\b", 
             r"\b(looking|searching).*\b(room|accommodation)",
             r"\bstay.*\bhotel\b",
-            r"\b(make|create|do).*\b(booking|reservation)",  # "make a booking"
+            r"\b(make|create|do).*\b(booking|reservation)", 
             r"\bplace.*a.*booking\b",
-            r"\b(need|want).*\b(room|accommodation|stay)\b", # "I need a room", "I want a room", "need room"
-            r"\bcheck[\s-]?in\b", # "check in"
+            r"\b(need|want).*\b(room|accommodation|stay)\b", 
+            r"\bcheck[\s-]?in\b", 
         ],
         
         "select_room": [
@@ -154,9 +152,9 @@ def detect_intent(msg, session=None):
             r"\bhow\s+much\b",
             r"\b(price|pricing|rates?|cost)\b",
             r"\b(cheap|expensive|affordable|budget)\b",
-            r"\b(discount|offer|deal|promotion|special)s?\b",  # Added 's?' for plurals
+            r"\b(discount|offer|deal|promotion|special)s?\b",  
             r"\b(any|have).*\b(discount|offer|deal|special)",
-            r"\bwhat.*are.*prices\b", # "What are your prices"
+            r"\bwhat.*are.*prices\b", 
         ],
         
         "location_directions": [
@@ -169,41 +167,39 @@ def detect_intent(msg, session=None):
         ],
     }
     
-    # Calculate confidence scores for each intent
+    
     intent_scores = {}
     
     for intent, patterns in intent_patterns.items():
         for pattern in patterns:
             if re.search(pattern, msg_lower):
-                # Any pattern match gives high confidence
-                # Multiple matches increase confidence
+                
                 intent_scores[intent] = intent_scores.get(intent, 0) + 0.7
     
-    # Context-aware adjustments based on session state
+    
     if session:
         flow = session.get("booking_flow", {})
         current_state = flow.get("state", "IDLE")
         
-        # Boost select_room intent if we're waiting for room choice
+        
         if current_state == "AWAITING_ROOM_CHOICE":
-            # Check if message contains a number (likely room selection)
+            
             if re.search(r'\d+', msg):
                 intent_scores["select_room"] = intent_scores.get("select_room", 0) + 0.5
         
-        # If we have partial booking data, boost booking-related intents
+        
         if flow.get("slots"):
             intent_scores["start_booking"] = intent_scores.get("start_booking", 0) + 0.2
     
-    # Find the highest confidence intent
+     
     if intent_scores:
         best_intent = max(intent_scores.items(), key=lambda x: x[1])
         intent, confidence = best_intent
         
-        # Only return intent if confidence exceeds threshold
-        if confidence >= 0.5:
+                if confidence >= 0.5:
             return intent
     
-    # Fallback to chitchat if no strong intent detected
+    
     return "chitchat"
 
 
@@ -228,48 +224,46 @@ def parse_booking_slots(text):
 def regex_fallback_slots(text):
     text_lower = text.lower()
     
-    # --- EMAIL ---
+    
     email = None
     m = re.search(r"[\w\.-]+@[\w\.-]+\.\w+", text)
     if m:
         email = m.group(0)
 
-    # --- PHONE ---
+    
     phone = None
-    # Look for phone numbers, avoiding dates (like 2025)
+    
     n = re.search(r"(?:phone|mobile|call)?\s*[:\-]?\s*(\+?\d{9,15})", text, re.I)
     if n:
         phone = n.group(1)
 
-    # --- NAME ---
+    
     name = None
-    # "I am [Name]", "My name is [Name]", "Name: [Name]"
+    
     name_match = re.search(r"(?:my name is|i am|name[:\s]+)\s+([A-Za-z ]+)", text, re.I)
     if name_match:
         raw_name = name_match.group(1).strip()
-        # Stop name at common keywords to avoid capturing "John email john@..."
+        
         stop_words = ["email", "phone", "check", "from", "to", "i need", "guests", "room"]
         for word in stop_words:
             if f" {word}" in raw_name.lower():
                 raw_name = raw_name.lower().split(f" {word}")[0]
         name = raw_name.title()
 
-    # --- DATES ---
-    # Supports: YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY
+    
     date_pattern = r"(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{4})"
     
     date_from = None
     date_to = None
     
-    # Strategy 1: "from [date] to [date]"
-    # Note: using non-f-string for regex to avoid escape issues, or carefully escaping
+
     range_pattern = r"from\s+" + date_pattern + r".*?to\s+" + date_pattern
     range_match = re.search(range_pattern, text_lower)
     if range_match:
         date_from = range_match.group(1)
         date_to = range_match.group(2)
     else:
-        # Strategy 2: "check in [date] ... check out [date]"
+        
         d1_pattern = r"(?:check[\s-]?in|start|from)\s*[:\-]?\s*" + date_pattern
         d2_pattern = r"(?:check[\s-]?out|end|to|until)\s*[:\-]?\s*" + date_pattern
         
@@ -278,27 +272,25 @@ def regex_fallback_slots(text):
         if d1: date_from = d1.group(1)
         if d2: date_to = d2.group(1)
 
-    # Normalize dates to YYYY-MM-DD
+    
     def normalize_date(d):
         if not d: return None
         d = d.replace("/", "-")
         try:
-            # Try DD-MM-YYYY
+            
             if re.match(r"\d{1,2}-\d{1,2}-\d{4}", d):
                 parts = d.split("-")
                 return f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
-            return d # Assume already YYYY-MM-DD
+            return d 
         except:
             return d
 
     date_from = normalize_date(date_from)
     date_to = normalize_date(date_to)
 
-    # --- GUESTS ---
+    
     guests = None
-    # Look for small numbers (1-20) followed by guests/people/adults
-    # Or just "guests [number]"
-    # Added \b to avoid matching years like 2025 guests
+   
     g = re.search(r"\b(\d{1,2})\s*(?:guests|people|adults|pax)", text_lower)
     if not g:
         g = re.search(r"(?:guests|people|adults|pax)\s*[:\-]?\s*(\d{1,2})", text_lower)
@@ -319,14 +311,13 @@ def regex_fallback_slots(text):
 
 
 def handle_chat_logic(message, session):
-    # Initialize session history if not present
+    
     if "history" not in session:
         session["history"] = []
     
-    # Add user message to history
+    
     session["history"].append({"role": "user", "content": message})
     
-    # Get current booking flow state
     flow = session.get("booking_flow", {"state": "IDLE", "slots": {}})
     current_state = flow.get("state", "IDLE")
     
@@ -334,17 +325,17 @@ def handle_chat_logic(message, session):
     intent = detect_intent(message, session)
     
     if current_state == "COLLECTING_INFO":
-        # Parse slots from the message
+    
         new_slots = parse_booking_slots(message)
         
-        # Update existing slots with new info
+        
         for k, v in new_slots.items():
             if v:
                 flow["slots"][k] = v
         
         session["booking_flow"] = flow
         
-        # Check what's still missing
+        
         needed = []
         required = ["name", "email", "check_in_date", "check_out_date", "guests"]
         
@@ -353,10 +344,10 @@ def handle_chat_logic(message, session):
                 needed.append(k)
         
         if needed:
-            # Still missing info, ask for it
+            
             response = f"I still need the following details: {', '.join(needed)}."
         else:
-            # All info collected, proceed to availability check
+            
             name = flow["slots"]["name"]
             email = flow["slots"]["email"]
             phone = flow["slots"].get("phone", "")
@@ -374,8 +365,7 @@ def handle_chat_logic(message, session):
 
             if not rooms:
                 response = "Sorry, no rooms available for those dates. Please try different dates."
-                # Reset flow or keep in collecting info? Let's reset for now or ask for new dates
-                # For simplicity, let's keep slots but ask for dates
+              
                 flow["slots"]["check_in_date"] = None
                 flow["slots"]["check_out_date"] = None
                 session["booking_flow"] = flow
@@ -389,35 +379,35 @@ def handle_chat_logic(message, session):
                     msg += f"- Room Type {r['id']}: {r['name']} (${r['total_price']})\n"
                 response = msg + "\nPlease select a room type ID."
 
-    # STATE: AWAITING_ROOM_CHOICE
+
     elif current_state == "AWAITING_ROOM_CHOICE":
-        # Check if message is a room selection (number) or explicit intent
+        
         if intent == "select_room" or re.search(r"\b\d+\b", message):
             m = re.search(r"(\d+)", message)
             if m:
                 rid = m.group(1)
                 available_rooms = flow.get("available_rooms", {})
                 
-                # Check for direct string match or integer match
+                
                 selected_room = None
                 if rid in available_rooms:
                     selected_room = available_rooms[rid]
                 elif int(rid) in available_rooms:
                     selected_room = available_rooms[int(rid)]
-                # Handle case where keys are strings but rid is int (unlikely with regex) or vice versa
+                
                 else:
-                    # Try comparing as strings
+                    
                     for k, v in available_rooms.items():
                         if str(k) == rid:
                             selected_room = v
                             break
                 
                 if selected_room:
-                    # Use the ID from the room object to be safe
+                    
                     final_rid = selected_room["id"]
                     
                     booking_resp = create_booking(
-                        flow["slots"].get("customer_id", 0), # Handle missing customer ID
+                        flow["slots"].get("customer_id", 0), 
                         final_rid,
                         flow["slots"]["check_in_date"],
                         flow["slots"]["check_out_date"]
@@ -434,15 +424,14 @@ def handle_chat_logic(message, session):
             else:
                 response = "Please provide the room type ID."
         else:
-            # User might be asking a question about the rooms
-            # Fallback to intent detection/chitchat but keep state
+            
             pass
 
-    # STATE: IDLE (or fallback from above)
+
     if not response:
-        # If we didn't handle it in the state machine, use standard intent detection
+    
         
-        # Helper to get hotel info context
+        
         def get_hotel_context(query):
             results = HOTEL_INFO_STORE.search(query, top_k=3)
             if results:
@@ -459,10 +448,10 @@ def handle_chat_logic(message, session):
             response = f"Housekeeping request noted. Ticket #{ticket['id']}."
 
         elif intent == "start_booking":
-            # Start new booking flow
+            
             flow["state"] = "COLLECTING_INFO"
             
-            # Parse any initial slots provided immediately
+            
             slots = parse_booking_slots(message)
             for k, v in slots.items():
                 if v:
@@ -470,7 +459,7 @@ def handle_chat_logic(message, session):
             
             session["booking_flow"] = flow
             
-            # Check what's missing immediately
+            
             needed = []
             required = ["name", "email", "check_in_date", "check_out_date", "guests"]
             for k in required:
@@ -480,7 +469,7 @@ def handle_chat_logic(message, session):
             if needed:
                 response = f"I'd be happy to help you book a room at Chennai BnB. I need: {', '.join(needed)}."
             else:
-                # All info collected immediately! Proceed to check availability
+            
                 name = flow["slots"]["name"]
                 email = flow["slots"]["email"]
                 phone = flow["slots"].get("phone", "")
@@ -583,8 +572,7 @@ def handle_chat_logic(message, session):
             response = call_perplexity(message, system=cancel_prompt, history=session["history"])
 
         else:
-            # Default chitchat with enhanced receptionist persona
-            # We can also inject general info here just in case
+           
             context = get_hotel_context(message)
             receptionist_prompt = (
                 "You are a friendly and professional receptionist at Chennai BnB Serviced Apartments. "
@@ -596,8 +584,9 @@ def handle_chat_logic(message, session):
             )
             response = call_perplexity(message, system=receptionist_prompt, history=session["history"])
     
-    # Add assistant response to history
+    
     session["history"].append({"role": "assistant", "content": response})
     
     return response
+
 
