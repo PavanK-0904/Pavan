@@ -6,8 +6,12 @@ PERPLEXITY_MODEL = "sonar-pro"
 FLASK_SECRET_KEY = "a_strong_default_secret_key_12345"
 
 
-QLOAPPS_API_KEY = "2TIF3ZJMJGKPW3WU1ZVZ61PRQUZMTFFB"
-QLOAPPS_BASE_URL = "http://localhost/qloapps/api"
+# Minical Database Configuration (MySQL via XAMPP)
+MYSQL_HOST = "localhost"
+MYSQL_PORT = 3306
+MYSQL_USER = "root"
+MYSQL_PASSWORD = ""  # XAMPP default is no password
+MYSQL_DATABASE = "nexrovatestdb"
 
 
 TWILIO_ACCOUNT_SID = "YOUR_TWILIO_SID"

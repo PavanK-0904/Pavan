@@ -8,13 +8,12 @@ from core import handle_chat_logic, parse_booking_slots
 
 
 from services_pms import (
-    qlo_get,
-    qlo_post,
     internal_create_customer,
     create_housekeeping_ticket,
     create_booking,
     pms_check_availability_pricing,
 )
+
 
 
 from services_rag import (
