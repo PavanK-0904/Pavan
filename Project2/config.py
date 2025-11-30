@@ -6,11 +6,11 @@ PERPLEXITY_MODEL = "sonar-pro"
 FLASK_SECRET_KEY = "a_strong_default_secret_key_12345"
 
 
-# Minical Database Configuration (MySQL via XAMPP)
+
 MYSQL_HOST = "localhost"
 MYSQL_PORT = 3306
 MYSQL_USER = "root"
-MYSQL_PASSWORD = ""  # XAMPP default is no password
+MYSQL_PASSWORD = "" 
 MYSQL_DATABASE = "nexrovatestdb"
 
 
@@ -25,3 +25,4 @@ EMBEDDING_DIM = 384
 
 
 DEBUG_MODE = False
+
